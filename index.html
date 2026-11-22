@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101827">
+<title>Шер Game</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:14px;background:radial-gradient(circle at top,#315b83,#101827 68%);color:#fff;font-family:system-ui,Arial;display:flex;justify-content:center;align-items:center}
+.app{width:min(100%,470px);padding:18px;background:#ffffff13;border:1px solid #ffffff30;border-radius:25px;box-shadow:0 18px 50px #0006;text-align:center}
+h1{font-size:29px;margin:3px 0}.sub{color:#d4e1f0;margin:3px 0 14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}.stat{background:#ffffff17;border-radius:14px;padding:8px 3px;color:#dbeafe}.stat b{display:block;font-size:24px;color:white}
+.pills{display:flex;gap:7px;margin:10px 0}.pill{flex:1;background:#ffffff17;border-radius:12px;padding:9px 4px;font-size:13px}
+#field{height:350px;position:relative;overflow:hidden;background:linear-gradient(145deg,#091323,#142b48);border:2px solid #ffffff25;border-radius:19px;touch-action:manipulation}
+.item{position:absolute;display:none;width:64px;height:64px;border:0;border-radius:50%;font-size:37px;background:#ffffff12;touch-action:manipulation}
+#coin{background:radial-gradient(circle at 35% 30%,#fff5b0,#ffc928 58%,#d88b00);box-shadow:0 5px 0 #98600a,0 0 24px #ffcf4388}
+#gem{width:56px;height:56px;font-size:35px;background:#123e61;box-shadow:0 0 20px #29d9ff99}
+#bomb{width:58px;height:58px;font-size:35px;background:#252b38;box-shadow:0 0 18px #ff515188}
+.buttons{display:flex;gap:8px;margin-top:12px}.main{flex:1;border:0;border-radius:13px;padding:14px 8px;background:linear-gradient(90deg,#38d39b,#20b981);color:#062819;font-size:17px;font-weight:800}.secondary{border:1px solid #ffffff35;border-radius:13px;padding:12px;background:#ffffff16;color:white;font-weight:700}
+#message{min-height:48px;line-height:1.4;margin:12px 0 4px;color:#e2e8f0}
+.panel{margin-top:12px;padding:12px;border-radius:14px;background:#ffffff12;text-align:left}.panel h3{margin:0 0 7px;font-size:16px}.panel p{margin:4px 0;color:#d6e2f0;font-size:13px}.foot{font-size:11px;color:#a9bad0;margin-top:10px}
+</style>
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));}</script></head>
+<body>
+<main class="app">
+<h1>🎮 Шер Game</h1><p class="sub">Собирай монеты и кристаллы, избегай бомб!</p>
+<div class="stats">
+ <div class="stat">Очки<b id="score">0</b></div>
+ <div class="stat">Время<b id="time">30</b></div>
+ <div class="stat">Рекорд<b id="best">0</b></div>
+</div>
+<div class="pills">
+ <div class="pill">⭐ Уровень <b id="level">1</b>/10</div>
+ <div class="pill">💎 Кристаллы <b id="gems">0</b></div>
+ <div class="pill">🎁 Бонус <b id="bonus">—</b></div>
+</div>
+<div id="field">
+ <button class="item" id="coin" aria-label="Монета">🪙</button>
+ <button class="item" id="gem" aria-label="Кристалл">💎</button>
+ <button class="item" id="bomb" aria-label="Бомба">💣</button>
+</div>
+<div class="buttons">
+ <button class="main" id="start">Начать игру</button>
+ <button class="secondary" id="daily">🎁 Бонус дня</button>
+</div>
+<div id="message">Нажми «Начать игру». Лови монеты и кристаллы, не трогай бомбы!</div>
+<div class="panel">
+ <h3>🏆 Мои рекорды на этом телефоне</h3>
+ <p id="record1">Лучший результат: 0 очков</p>
+ <p id="record2">Всего кристаллов: 0</p>
+ <p id="record3">Бонус дня: ещё не получен</p>
+</div>
+<div class="foot">Шер Game • Бесплатная игра • Работает офлайн после первого открытия</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const field=$('field'),coin=$('coin'),gem=$('gem'),bomb=$('bomb');
+let score=0,time=30,gems=Number(localStorage.getItem('v3gems')||0),best=Number(localStorage.getItem('v3best')||localStorage.getItem('coinBestV2')||0),level=1,playing=false,timer=null;
+$('best').textContent=best;$('gems').textContent=gems;
+function updatePanel(){
+ $('record1').textContent='Лучший результат: '+best+' очков';
+ $('record2').textContent='Всего кристаллов: '+gems;
+ $('record3').textContent='Бонус дня: '+(localStorage.getItem('v3bonus')||'ещё не получен');
+}
+updatePanel();
+function place(el){el.style.left=Math.floor(Math.random()*Math.max(1,field.clientWidth-el.offsetWidth))+'px';el.style.top=Math.floor(Math.random()*Math.max(1,field.clientHeight-el.offsetHeight))+'px';}
+function hideItems(){[coin,gem,bomb].forEach(x=>x.style.display='none');}
+function spawn(){hideItems();coin.style.display='block';place(coin);
+ if(Math.random()<.48){gem.style.display='block';place(gem);}
+ if(Math.random()<.34){bomb.style.display='block';place(bomb);}
+}
+function finish(text){playing=false;clearInterval(timer);hideItems();$('start').disabled=false;$('start').textContent='Играть ещё раз';if(score>best){best=score;localStorage.setItem('v3best',best);$('best').textContent=best;}
+ $('message').textContent=text+' Итог: '+score+' очков, 💎 '+gems+'. Лучший уровень: '+level+'/10.';updatePanel();}
+$('start').addEventListener('click',()=>{clearInterval(timer);score=0;time=30;level=1;playing=true;$('score').textContent=0;$('time').textContent=30;$('level').textContent=1;$('start').disabled=true;$('start').textContent='Игра идёт…';$('message').textContent='Лови 🪙 и 💎 — избегай 💣!';spawn();
+ timer=setInterval(()=>{time--;level=Math.min(10,1+Math.floor(score/10));$('time').textContent=time;$('level').textContent=level;if(time<=0)finish('Время вышло!');},1000);});
+coin.addEventListener('click',()=>{if(!playing)return;score++;$('score').textContent=score;level=Math.min(10,1+Math.floor(score/10));$('level').textContent=level;spawn();});
+gem.addEventListener('click',()=>{if(!playing)return;gems++;score+=5;$('gems').textContent=gems;$('score').textContent=score;localStorage.setItem('v3gems',gems);level=Math.min(10,1+Math.floor(score/10));$('level').textContent=level;$('message').textContent='Кристалл пойман! +5 очков 💎';spawn();updatePanel();});
+bomb.addEventListener('click',()=>{if(!playing)return;finish('Бомба! Игра окончена.');});
+$('daily').addEventListener('click',()=>{const today=new Date().toISOString().slice(0,10),claimed=localStorage.getItem('v3bonusDate');if(claimed===today){$('message').textContent='Бонус дня уже получен. Возвращайся завтра!';return;}gems+=3;localStorage.setItem('v3gems',gems);localStorage.setItem('v3bonusDate',today);localStorage.setItem('v3bonus',today+' — 3 кристалла');$('gems').textContent=gems;$('bonus').textContent='+3 💎';$('message').textContent='🎁 Ты получил 3 бесплатных кристалла!';updatePanel();});
+window.addEventListener('resize',()=>{if(playing)spawn();});
+</script>
+</body></html>
